@@ -1,8 +1,8 @@
 <?php
 $host = "localhost";
-$user = "root";
-$pass = "";
-$db = "sig_lahan_pertanian";
+$user = "u923881671_SIG2K26";
+$pass = "r0!gG&2Fb";
+$db = "u923881671_sipetagis2k26";
 
 $koneksi = mysqli_connect($host, $user, $pass, $db);
 
@@ -15,7 +15,7 @@ if (!$koneksi) {
  //$config_base_url = "http://localhost/SISTEMSIGNATIVE";
 //$config_base_url = "https://rachelle-starrier-thoughtfully.ngrok-free.dev/SISTEMSIGNATIVE";
 
- $config_base_url = "http://darkgoldenrod-mink-191162.hostingersite.com/SISTEMSIGNATIVE";
+ $config_base_url = "https://darkgoldenrod-mink-191162.hostingersite.com/SISTEMSIGNATIVE";
 
 
 
