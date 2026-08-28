@@ -12,8 +12,12 @@ if (!$koneksi) {
 
 // Konfigurasi Base URL
 // Ganti nilai ini dengan URL ngrok Anda saat aplikasi di-online-kan (misal: https://1234-abcd.ngrok.io)
- $config_base_url = "http://localhost/SISTEMSIGNATIVE";
+ //$config_base_url = "http://localhost/SISTEMSIGNATIVE";
 //$config_base_url = "https://rachelle-starrier-thoughtfully.ngrok-free.dev/SISTEMSIGNATIVE";
+
+ $config_base_url = "http://darkgoldenrod-mink-191162.hostingersite.com/SISTEMSIGNATIVE";
+
+
 
 function base_url($url = '') {
     global $config_base_url;
