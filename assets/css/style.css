@@ -1,0 +1,620 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+}
+
+body {
+    background-color: #f4f7f6;
+    color: #333;
+}
+
+.header {
+    background-color: #2c3e50;
+    color: white;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.header .logo {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.nav ul {
+    list-style: none;
+    display: flex;
+    gap: 1.5rem;
+}
+
+.nav a {
+    color: white;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s;
+}
+
+.nav a:hover {
+    color: #1abc9c;
+}
+
+.btn-login {
+    background-color: #1abc9c;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+}
+
+.btn-login:hover {
+    background-color: #16a085;
+    color: white !important;
+}
+
+.hero {
+    text-align: center;
+    padding: 3rem 1rem;
+    background-color: #fff;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid #ddd;
+}
+
+.hero h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    color: #2c3e50;
+}
+
+.hero p {
+    font-size: 1.2rem;
+    color: #7f8c8d;
+}
+
+.map-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    position: relative;
+    padding: 0 1rem;
+}
+
+#map {
+    height: 600px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    border: 2px solid #ddd;
+}
+
+.map-legend {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    margin-top: 1rem;
+}
+
+.map-legend h3 {
+    margin-bottom: 0.5rem;
+}
+
+#legend-list {
+    list-style: none;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.color-box {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 1px solid #555;
+    vertical-align: middle;
+    margin-right: 5px;
+    border-radius: 3px;
+}
+
+.footer {
+    text-align: center;
+    padding: 2rem;
+    background-color: #2c3e50;
+    color: white;
+    margin-top: 3rem;
+}
+
+/* ============================================
+   ANIMASI & TRANSISI HALUS
+   ============================================ */
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.6;
+    }
+}
+
+@keyframes bounceIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* ============================================
+   LEAFLET CUSTOMIZATION
+   ============================================ */
+
+/* Peta dengan border radius dan shadow */
+.leaflet-container {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    transition: box-shadow 0.3s ease;
+}
+
+.leaflet-container:hover {
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2);
+}
+
+/* Smooth tile layer */
+.tile-layer {
+    filter: brightness(1) contrast(1.05);
+    transition: filter 0.3s ease;
+}
+
+/* Layer control styling modern */
+.leaflet-control-layers {
+    border: none !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
+    background-color: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+}
+
+.leaflet-control-layers-list {
+    padding: 12px !important;
+}
+
+.leaflet-control-layers label {
+    margin: 8px 0 !important;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 8px 10px;
+    border-radius: 6px;
+}
+
+.leaflet-control-layers label:hover {
+    background-color: rgba(102, 126, 234, 0.1);
+}
+
+.leaflet-control-layers input[type="radio"],
+.leaflet-control-layers input[type="checkbox"] {
+    margin-right: 8px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.leaflet-control-layers input:hover {
+    transform: scale(1.1);
+}
+
+/* Popup styling modern dengan glassmorphism */
+.leaflet-popup-content-wrapper {
+    border-radius: 12px !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2) !important;
+    background: white !important;
+    border: none !important;
+    padding: 0 !important;
+    overflow: hidden;
+    animation: bounceIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.leaflet-popup-content {
+    margin: 0 !important;
+    padding: 12px 15px !important;
+    width: 100% !important;
+}
+
+.leaflet-popup-tip {
+    background: white !important;
+    box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.modern-popup {
+    animation: slideIn 0.3s ease;
+}
+
+.modern-popup h4 {
+    animation: fadeInUp 0.4s ease 0.1s both;
+}
+
+.modern-popup table {
+    animation: fadeInUp 0.4s ease 0.2s both;
+}
+
+/* Custom popup class */
+.custom-popup .leaflet-popup-content-wrapper {
+    background: white;
+}
+
+.custom-popup .leaflet-popup-content {
+    font-size: 13px;
+}
+
+/* Button styling untuk peta */
+.leaflet-control-zoom {
+    border-radius: 8px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    background-color: rgba(255, 255, 255, 0.9) !important;
+    border: none !important;
+    overflow: hidden;
+}
+
+.leaflet-control-zoom a {
+    width: 40px !important;
+    height: 40px !important;
+    line-height: 40px !important;
+    color: #667eea !important;
+    font-size: 18px !important;
+    border-bottom: 1px solid #f0f0f0 !important;
+    transition: all 0.2s ease;
+}
+
+.leaflet-control-zoom a:hover {
+    background-color: #f5f5f5 !important;
+    color: #764ba2 !important;
+}
+
+.leaflet-control-zoom a:last-child {
+    border-bottom: none !important;
+}
+
+/* Fullscreen control */
+.leaflet-control-fullscreen {
+    border-radius: 8px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    background-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.leaflet-control-fullscreen a {
+    color: #667eea !important;
+    transition: all 0.2s ease;
+}
+
+.leaflet-control-fullscreen a:hover {
+    background-color: #f5f5f5 !important;
+    color: #764ba2 !important;
+}
+
+/* ============================================
+   FORM & INPUT STYLING
+   ============================================ */
+
+.form-control {
+    border-radius: 8px;
+    border: 1.5px solid #e0e0e0;
+    padding: 10px 14px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    background-color: #fff;
+}
+
+.form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    outline: none;
+}
+
+.form-control:hover:not(:focus) {
+    border-color: #d0d0d0;
+}
+
+select.form-control {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23667eea' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+}
+
+textarea.form-control {
+    resize: vertical;
+    min-height: 80px;
+    font-family: 'Inter', sans-serif;
+}
+
+/* ============================================
+   BUTTON STYLING
+   ============================================ */
+
+.btn {
+    border-radius: 8px;
+    font-weight: 500;
+    padding: 10px 18px;
+    border: none;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn-green {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-green:hover {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    color: white;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    color: white;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+    color: white;
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+    color: white;
+    border: none;
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #ee5a52 0%, #ff6b6b 100%);
+    color: white;
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #ffa502 0%, #ff6b6b 100%);
+    color: white;
+    border: none;
+}
+
+.btn-warning:hover {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ffa502 100%);
+    color: white;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ============================================
+   CARD & CONTAINER STYLING
+   ============================================ */
+
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
+}
+
+.card:hover {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+/* ============================================
+   TABLE STYLING
+   ============================================ */
+
+.table-responsive {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.table {
+    margin: 0;
+    border-collapse: collapse;
+}
+
+.table thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.table thead th {
+    border: none;
+    padding: 14px;
+    font-weight: 600;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.table tbody tr {
+    border-bottom: 1px solid #f0f0f0;
+    transition: all 0.2s ease;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9ff;
+}
+
+.table tbody td {
+    padding: 12px 14px;
+    font-size: 13px;
+}
+
+/* ============================================
+   ALERT & MESSAGE STYLING
+   ============================================ */
+
+.alert {
+    border: none;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13px;
+    animation: slideIn 0.3s ease;
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, rgba(255, 107, 107, 0.1) 0%, rgba(238, 90, 82, 0.1) 100%);
+    border-left: 4px solid #ff6b6b;
+    color: #c92a2a;
+}
+
+.alert-success {
+    background: linear-gradient(135deg, rgba(44, 200, 150, 0.1) 0%, rgba(102, 200, 180, 0.1) 100%);
+    border-left: 4px solid #2cc896;
+    color: #118477;
+}
+
+.alert-warning {
+    background: linear-gradient(135deg, rgba(255, 165, 2, 0.1) 0%, rgba(255, 107, 107, 0.1) 100%);
+    border-left: 4px solid #ffa502;
+    color: #cc7700;
+}
+
+/* ============================================
+   GPS CONTROL STYLING
+   ============================================ */
+
+#gps-controls {
+    background: linear-gradient(135deg, rgba(46, 125, 50, 0.05) 0%, rgba(56, 200, 100, 0.05) 100%) !important;
+    border-radius: 8px !important;
+    border: 2px solid #2e7d32 !important;
+    transition: all 0.3s ease;
+}
+
+#gps-controls:hover {
+    box-shadow: 0 4px 15px rgba(46, 125, 50, 0.15);
+}
+
+#gps-status {
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 6px;
+    font-size: 12px;
+    animation: fadeInUp 0.3s ease;
+}
+
+.text-danger.blink {
+    animation: pulse 1s infinite;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+
+@media (max-width: 768px) {
+    #map {
+        height: 400px;
+    }
+    
+    .card {
+        margin-bottom: 15px;
+    }
+    
+    .btn {
+        padding: 8px 14px;
+        font-size: 13px;
+    }
+    
+    .table {
+        font-size: 12px;
+    }
+    
+    .table thead th {
+        padding: 10px;
+    }
+    
+    .table tbody td {
+        padding: 8px;
+    }
+    
+    .leaflet-control-zoom {
+        margin-left: 10px !important;
+    }
+}
+
+@media (max-width: 576px) {
+    #map {
+        height: 300px;
+    }
+    
+    .hero h1 {
+        font-size: 1.8rem;
+    }
+    
+    .hero p {
+        font-size: 0.95rem;
+    }
+}
