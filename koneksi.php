@@ -15,7 +15,7 @@ if (!$koneksi) {
  //$config_base_url = "http://localhost/SISTEMSIGNATIVE";
 //$config_base_url = "https://rachelle-starrier-thoughtfully.ngrok-free.dev/SISTEMSIGNATIVE";
 
- $config_base_url = "https://darkgoldenrod-mink-191162.hostingersite.com/SISTEMSIGNATIVE";
+ $config_base_url = "https://darkgoldenrod-mink-191162.hostingersite.com";
 
 
 
