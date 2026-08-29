@@ -3,9 +3,11 @@ require_once '../koneksi.php';
 
 // Processing data harus dilakukan sebelum output HTML apapun
 // Proses hapus
-if(isset($_GET['hapus'])) {
-    $id = mysqli_real_escape_string($koneksi, $_GET['hapus']);
-    mysqli_query($koneksi, "DELETE FROM komoditas WHERE id='$id'");
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['hapus'])) {
+    $id = filter_input(INPUT_POST, 'hapus', FILTER_VALIDATE_INT);
+    if ($id !== false && $id !== null && $id > 0) {
+        mysqli_query($koneksi, "DELETE FROM komoditas WHERE id='" . (int)$id . "'");
+    }
     header("location:komoditas.php");
     exit();
 }
@@ -123,10 +125,12 @@ require_once 'layout_header.php';
                                 <a href="?edit=<?= $row['id'] ?>" class="btn btn-sm btn-primary" title="Edit">
                                     <i class="fa fa-edit"></i>
                                 </a>
-                                <a href="?hapus=<?= $row['id'] ?>" class="btn btn-sm btn-danger" 
-                                   onclick="return confirm('Hapus komoditas ini?')" title="Hapus">
-                                    <i class="fa fa-trash"></i>
-                                </a>
+                                <form method="post" action="" class="d-inline" onsubmit="return confirm('Hapus komoditas ini?')">
+                                    <input type="hidden" name="hapus" value="<?= (int) $row['id'] ?>">
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
+                                        <i class="fa fa-trash"></i>
+                                    </button>
+                                </form>
                             </td>
                         </tr>
                         <?php endwhile; ?>
