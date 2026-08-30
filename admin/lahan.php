@@ -149,10 +149,56 @@ require_once 'layout_header.php';
                         <div id="gps-controls" class="mt-3 p-3 border rounded bg-light" style="border-left: 4px solid #2e7d32 !important;">
                             <span class="font-weight-bold d-block mb-2" style="color: #2e7d32;"><i class="fa fa-location-arrow"></i> Mode GPS Walking Survey</span>
                             <p class="small text-muted mb-2">Bawa perangkat Anda mengelilingi batas lahan untuk memetakan secara otomatis.</p>
-                            <button type="button" id="btn-start-gps" class="btn btn-sm btn-primary"><i class="fa fa-play"></i> Mulai Jalan</button>
-                            <button type="button" id="btn-stop-gps" class="btn btn-sm btn-danger" disabled><i class="fa fa-stop"></i> Berhenti & Buat Area</button>
-                            <button type="button" id="btn-reset-gps" class="btn btn-sm btn-warning" disabled><i class="fa fa-refresh"></i> Reset</button>
+                            
+                            <!-- Sensitivitas GPS -->
+                            <div class="mb-2">
+                                <label class="small text-muted font-weight-bold d-block mb-1">Sensitivitas GPS:</label>
+                                <div class="btn-group btn-group-sm" role="group" id="gps-sensitivity-group">
+                                    <button type="button" class="btn btn-outline-success gps-sens-btn" data-level="high" title="Akurasi < 20m — sinyal kuat">🟢 Tinggi</button>
+                                    <button type="button" class="btn btn-outline-warning gps-sens-btn active" data-level="medium" title="Akurasi < 50m — sinyal normal" style="background-color: #ffc107; color: #212529;">🟡 Sedang</button>
+                                    <button type="button" class="btn btn-outline-danger gps-sens-btn" data-level="low" title="Akurasi < 150m — sinyal lemah">🔴 Rendah</button>
+                                </div>
+                            </div>
+
+                            <div class="d-flex flex-wrap mb-2" style="gap: 5px;">
+                                <button type="button" id="btn-start-gps" class="btn btn-sm btn-primary"><i class="fa fa-play"></i> Mulai Jalan</button>
+                                <button type="button" id="btn-stop-gps" class="btn btn-sm btn-danger" disabled><i class="fa fa-stop"></i> Berhenti & Buat Area</button>
+                                <button type="button" id="btn-reset-gps" class="btn btn-sm btn-warning" disabled><i class="fa fa-refresh"></i> Reset</button>
+                                <button type="button" id="btn-add-manual" class="btn btn-sm btn-info" disabled title="Klik di peta untuk tambah titik manual"><i class="fa fa-map-pin"></i> + Titik Manual</button>
+                            </div>
+
+                            <!-- Signal Bar Indicator -->
+                            <div id="gps-signal-bar" class="mb-2" style="display: none;">
+                                <div class="d-flex align-items-center" style="gap: 8px;">
+                                    <span class="small font-weight-bold">Sinyal:</span>
+                                    <div style="display: flex; align-items: flex-end; gap: 2px; height: 16px;">
+                                        <div id="sig-bar-1" style="width: 4px; height: 4px; background: #ccc; border-radius: 1px;"></div>
+                                        <div id="sig-bar-2" style="width: 4px; height: 7px; background: #ccc; border-radius: 1px;"></div>
+                                        <div id="sig-bar-3" style="width: 4px; height: 10px; background: #ccc; border-radius: 1px;"></div>
+                                        <div id="sig-bar-4" style="width: 4px; height: 13px; background: #ccc; border-radius: 1px;"></div>
+                                        <div id="sig-bar-5" style="width: 4px; height: 16px; background: #ccc; border-radius: 1px;"></div>
+                                    </div>
+                                    <span id="signal-label" class="small font-weight-bold text-muted">--</span>
+                                </div>
+                            </div>
+
+                            <!-- Progress bar inisialisasi -->
+                            <div id="gps-init-progress" class="mb-2" style="display: none;">
+                                <div class="progress" style="height: 6px;">
+                                    <div id="gps-init-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-info" style="width: 0%;"></div>
+                                </div>
+                                <small id="gps-init-text" class="text-muted">Mencari sinyal terbaik...</small>
+                            </div>
+
                             <div id="gps-status" class="small font-weight-bold mt-2 text-secondary">Status: Menunggu instruksi...</div>
+                            <div id="gps-stats" class="small text-muted mt-1" style="display: none;">
+                                📊 Titik: <span id="stat-points">0</span> | Jarak: <span id="stat-distance">0</span>m
+                            </div>
+                            
+                            <!-- Tips sinyal lemah -->
+                            <div id="gps-tips" class="small text-muted mt-2 p-2 rounded" style="background: #fff3cd; display: none;">
+                                <i class="fa fa-lightbulb-o text-warning"></i> <strong>Tips sinyal lemah:</strong> Bergerak perlahan, jauhi bangunan tinggi, atau gunakan "Titik Manual" dengan klik di peta.
+                            </div>
                         </div>
                     </div>
                     
@@ -377,24 +423,115 @@ require_once 'layout_header.php';
             });
 
         // ==========================
-        // Logika GPS Walking Survey dengan Animasi
+        // Logika GPS Walking Survey — Versi Toleran Sinyal Lemah
         // ==========================
         var watchId = null;
         var gpsTrackPoints = [];
         var gpsPolyline = null;
         var isTracking = false;
+        var isManualMode = false;
+        var manualClickHandler = null;
 
         const btnStartGps = document.getElementById('btn-start-gps');
         const btnStopGps = document.getElementById('btn-stop-gps');
         const btnResetGps = document.getElementById('btn-reset-gps');
+        const btnAddManual = document.getElementById('btn-add-manual');
         const gpsStatus = document.getElementById('gps-status');
+        const gpsStats = document.getElementById('gps-stats');
+        const gpsSignalBar = document.getElementById('gps-signal-bar');
+        const gpsTips = document.getElementById('gps-tips');
+        const gpsInitProgress = document.getElementById('gps-init-progress');
 
         // Variabel untuk tracking
         var lastGpsPoint = null;
-        var minDistanceThreshold = 5; // Minimum 5 meter sebelum menambah titik baru
+        var minDistanceThreshold = 3; // Minimum 3 meter sebelum menambah titik baru
         var gpsSignalSamples = [];
         var lastStableGpsPoint = null;
+        var totalDistance = 0;
 
+        // ==========================
+        // Sistem Akurasi Adaptif 3 Level
+        // ==========================
+        var accuracyLevels = {
+            high:   { maxAccuracy: 20,  avgAccuracy: 15,  label: 'Tinggi',  color: '#28a745' },
+            medium: { maxAccuracy: 50,  avgAccuracy: 40,  label: 'Sedang',  color: '#ffc107' },
+            low:    { maxAccuracy: 150, avgAccuracy: 120, label: 'Rendah',  color: '#dc3545' }
+        };
+        var currentAccuracyLevel = 'medium'; // Default sedang
+
+        // Event listener untuk tombol sensitivitas
+        document.querySelectorAll('.gps-sens-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.gps-sens-btn').forEach(function(b) {
+                    b.classList.remove('active');
+                    b.style.backgroundColor = '';
+                    b.style.color = '';
+                });
+                this.classList.add('active');
+                currentAccuracyLevel = this.dataset.level;
+                var lvl = accuracyLevels[currentAccuracyLevel];
+                
+                // Style tombol aktif
+                if (currentAccuracyLevel === 'high') {
+                    this.style.backgroundColor = '#28a745';
+                    this.style.color = '#fff';
+                } else if (currentAccuracyLevel === 'medium') {
+                    this.style.backgroundColor = '#ffc107';
+                    this.style.color = '#212529';
+                } else {
+                    this.style.backgroundColor = '#dc3545';
+                    this.style.color = '#fff';
+                }
+                
+                gpsStatus.innerHTML = '<span class="text-info"><i class="fa fa-info-circle"></i> Sensitivitas diubah ke: ' + lvl.label + ' (maks ' + lvl.maxAccuracy + 'm)</span>';
+            });
+        });
+
+        // ==========================
+        // Kalman Filter Sederhana untuk Smoothing GPS
+        // ==========================
+        var kalmanFilter = {
+            lat: null,
+            lng: null,
+            variance: null,
+            
+            reset: function() {
+                this.lat = null;
+                this.lng = null;
+                this.variance = null;
+            },
+            
+            process: function(lat, lng, accuracy) {
+                // Konversi akurasi ke variance (accuracy dalam meter, kita bekerja di derajat)
+                // ~111320 meter per derajat latitude
+                var accuracyDeg = accuracy / 111320;
+                var measurement_variance = accuracyDeg * accuracyDeg;
+                
+                if (this.lat === null) {
+                    // Inisialisasi pertama
+                    this.lat = lat;
+                    this.lng = lng;
+                    this.variance = measurement_variance;
+                } else {
+                    // Prediksi: tambahkan sedikit process noise (untuk pergerakan berjalan)
+                    var processNoise = 0.000001; // ~0.11m proses noise
+                    this.variance += processNoise;
+                    
+                    // Update (Kalman gain)
+                    var kalmanGain = this.variance / (this.variance + measurement_variance);
+                    
+                    this.lat = this.lat + kalmanGain * (lat - this.lat);
+                    this.lng = this.lng + kalmanGain * (lng - this.lng);
+                    this.variance = (1 - kalmanGain) * this.variance;
+                }
+                
+                return { lat: this.lat, lng: this.lng };
+            }
+        };
+
+        // ==========================
+        // Helper Functions
+        // ==========================
         function getAverageAccuracy() {
             if (gpsSignalSamples.length === 0) return null;
             const total = gpsSignalSamples.reduce((sum, value) => sum + value, 0);
@@ -403,7 +540,7 @@ require_once 'layout_header.php';
 
         function pushSignalSample(accuracy) {
             gpsSignalSamples.push(accuracy);
-            if (gpsSignalSamples.length > 6) {
+            if (gpsSignalSamples.length > 8) {
                 gpsSignalSamples.shift();
             }
         }
@@ -422,13 +559,93 @@ require_once 'layout_header.php';
             return distance;
         }
 
+        // Update signal bar visual indicator
+        function updateSignalBar(accuracy) {
+            gpsSignalBar.style.display = 'block';
+            var bars = [
+                document.getElementById('sig-bar-1'),
+                document.getElementById('sig-bar-2'),
+                document.getElementById('sig-bar-3'),
+                document.getElementById('sig-bar-4'),
+                document.getElementById('sig-bar-5')
+            ];
+            var signalLabel = document.getElementById('signal-label');
+            
+            var activeBars, color, label;
+            if (accuracy <= 10) {
+                activeBars = 5; color = '#28a745'; label = 'Sangat Kuat (' + Math.round(accuracy) + 'm)';
+            } else if (accuracy <= 20) {
+                activeBars = 4; color = '#28a745'; label = 'Kuat (' + Math.round(accuracy) + 'm)';
+            } else if (accuracy <= 50) {
+                activeBars = 3; color = '#ffc107'; label = 'Sedang (' + Math.round(accuracy) + 'm)';
+            } else if (accuracy <= 100) {
+                activeBars = 2; color = '#fd7e14'; label = 'Lemah (' + Math.round(accuracy) + 'm)';
+            } else {
+                activeBars = 1; color = '#dc3545'; label = 'Sangat Lemah (' + Math.round(accuracy) + 'm)';
+            }
+            
+            bars.forEach(function(bar, i) {
+                bar.style.background = (i < activeBars) ? color : '#ccc';
+                bar.style.transition = 'background 0.3s ease';
+            });
+            signalLabel.textContent = label;
+            signalLabel.style.color = color;
+        }
+
+        // Update statistik tracking
+        function updateStats() {
+            if (gpsTrackPoints.length > 0) {
+                gpsStats.style.display = 'block';
+                document.getElementById('stat-points').textContent = gpsTrackPoints.length;
+                document.getElementById('stat-distance').textContent = Math.round(totalDistance);
+            }
+        }
+
+        // Tambahkan titik ke track
+        function addTrackPoint(lat, lng, panMap) {
+            var newPoint = [lat, lng];
+            
+            // Hitung jarak dari titik terakhir
+            if (lastGpsPoint !== null) {
+                var dist = getDistanceFromLatLonInMeters(lastGpsPoint[0], lastGpsPoint[1], lat, lng);
+                totalDistance += dist;
+            }
+            
+            gpsTrackPoints.push(newPoint);
+            lastGpsPoint = newPoint;
+            lastStableGpsPoint = newPoint;
+            
+            if (gpsPolyline) {
+                gpsPolyline.setLatLngs(gpsTrackPoints);
+            }
+            
+            if (panMap !== false) {
+                if (gpsTrackPoints.length === 1) {
+                    map.setView(newPoint, 19, { animate: true, duration: 1.2 });
+                } else {
+                    map.panTo(newPoint, {
+                        animate: true,
+                        duration: 0.8,
+                        easeLinearity: 0.2
+                    });
+                }
+            }
+            
+            updateStats();
+            btnStopGps.disabled = false;
+            btnResetGps.disabled = false;
+            btnAddManual.disabled = false;
+        }
+
+        // ==========================
+        // GPS Start dengan Inisialisasi Progresif
+        // ==========================
         btnStartGps.addEventListener('click', function() {
             if (!navigator.geolocation) {
                 alert('Browser Anda tidak mendukung Geolocation.');
                 return;
             }
 
-            // Cek apakah sudah tracking
             if (isTracking) {
                 alert('GPS tracking sudah berjalan! Klik "Berhenti & Buat Area" untuk menghentikan.');
                 return;
@@ -441,6 +658,12 @@ require_once 'layout_header.php';
             gpsStatus.innerHTML = '<span class="text-primary"><i class="fa fa-spinner fa-spin"></i> Mencari sinyal GPS...</span>';
             gpsStatus.style.animation = 'slideIn 0.3s ease';
             
+            // Tampilkan progress bar inisialisasi
+            gpsInitProgress.style.display = 'block';
+            var initBar = document.getElementById('gps-init-bar');
+            var initText = document.getElementById('gps-init-text');
+            initBar.style.width = '0%';
+            
             // Hapus layer lama jika ada
             drawnItems.clearLayers();
             if (gpsPolyline) {
@@ -450,8 +673,10 @@ require_once 'layout_header.php';
             lastGpsPoint = null;
             lastStableGpsPoint = null;
             gpsSignalSamples = [];
+            totalDistance = 0;
+            kalmanFilter.reset();
 
-            // Inisialisasi Polyline untuk tracking jalan dengan style halus
+            // Inisialisasi Polyline untuk tracking jalan
             gpsPolyline = L.polyline(gpsTrackPoints, {
                 color: '#667eea',
                 weight: 4,
@@ -463,96 +688,291 @@ require_once 'layout_header.php';
             }).addTo(map);
 
             isTracking = true;
-            let positionCount = 0;
+            var positionCount = 0;
+            var initPhase = true;
+            var initStartTime = Date.now();
+            var initDuration = 15000; // 15 detik inisialisasi
+            var bestInitAccuracy = Infinity;
+            var bestInitPosition = null;
+            var initTimer = null;
+            var hasAutoDowngraded = false;
+
+            // Timer progress bar inisialisasi
+            var initProgressTimer = setInterval(function() {
+                if (!initPhase) {
+                    clearInterval(initProgressTimer);
+                    gpsInitProgress.style.display = 'none';
+                    return;
+                }
+                var elapsed = Date.now() - initStartTime;
+                var progress = Math.min((elapsed / initDuration) * 100, 100);
+                initBar.style.width = progress + '%';
+                
+                var remaining = Math.max(0, Math.ceil((initDuration - elapsed) / 1000));
+                initText.textContent = 'Mencari sinyal terbaik... (' + remaining + ' detik lagi)';
+                
+                // Setelah timeout, keluar dari init phase
+                if (elapsed >= initDuration && initPhase) {
+                    initPhase = false;
+                    clearInterval(initProgressTimer);
+                    gpsInitProgress.style.display = 'none';
+                    
+                    // Jika masih belum dapat sinyal yang sesuai level
+                    var lvl = accuracyLevels[currentAccuracyLevel];
+                    if (bestInitAccuracy > lvl.maxAccuracy) {
+                        // Auto-downgrade level
+                        if (currentAccuracyLevel === 'high') {
+                            // Turunkan ke sedang
+                            document.querySelector('[data-level="medium"]').click();
+                            hasAutoDowngraded = true;
+                            gpsStatus.innerHTML = '<span class="text-warning"><i class="fa fa-exclamation-triangle"></i> Sinyal lemah. Otomatis turun ke level Sedang (maks 50m).</span>';
+                        } else if (currentAccuracyLevel === 'medium') {
+                            // Turunkan ke rendah
+                            document.querySelector('[data-level="low"]').click();
+                            hasAutoDowngraded = true;
+                            gpsStatus.innerHTML = '<span class="text-warning"><i class="fa fa-exclamation-triangle"></i> Sinyal lemah. Otomatis turun ke level Rendah (maks 150m).</span>';
+                        }
+                        
+                        // Tampilkan tips sinyal lemah
+                        gpsTips.style.display = 'block';
+                        
+                        // Jika sudah punya posisi apapun, gunakan itu
+                        if (bestInitPosition) {
+                            var filtered = kalmanFilter.process(bestInitPosition.lat, bestInitPosition.lng, bestInitAccuracy);
+                            addTrackPoint(filtered.lat, filtered.lng);
+                            
+                            btnStartGps.innerHTML = '<i class="fa fa-circle text-danger blink"></i> Merekam...';
+                            gpsStatus.innerHTML = '<span class="text-success"><i class="fa fa-circle text-danger blink"></i> Tracking aktif (sinyal lemah, menggunakan filter). Titik: ' + gpsTrackPoints.length + '</span>';
+                        }
+                    }
+                }
+            }, 200);
 
             watchId = navigator.geolocation.watchPosition(
                 function(position) {
-                    if (!isTracking) return; // Stop jika tracking sudah dibatalkan
+                    if (!isTracking) return;
 
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-                    const accuracy = position.coords.accuracy;
+                    var lat = position.coords.latitude;
+                    var lng = position.coords.longitude;
+                    var accuracy = position.coords.accuracy;
 
                     pushSignalSample(accuracy);
-                    const avgAccuracy = getAverageAccuracy();
+                    var avgAccuracy = getAverageAccuracy();
+                    
+                    // Update signal bar
+                    updateSignalBar(accuracy);
 
-                    // Abaikan sinyal GPS yang sangat tidak akurat agar tidak "loncat-loncat"
-                    if (accuracy > 25 || (avgAccuracy !== null && avgAccuracy > 18)) {
-                        gpsStatus.style.animation = 'none';
-                        setTimeout(() => {
-                            gpsStatus.innerHTML = `<span class="text-warning"><i class="fa fa-spinner fa-spin"></i> Menunggu sinyal GPS stabil... (Akurasi: ${Math.round(accuracy)}m / rata-rata: ${avgAccuracy !== null ? Math.round(avgAccuracy) : '-'}m)</span>`;
-                            gpsStatus.style.animation = 'slideIn 0.2s ease';
-                        }, 10);
+                    var lvl = accuracyLevels[currentAccuracyLevel];
+
+                    // Fase Inisialisasi: kumpulkan sinyal terbaik
+                    if (initPhase) {
+                        if (accuracy < bestInitAccuracy) {
+                            bestInitAccuracy = accuracy;
+                            bestInitPosition = { lat: lat, lng: lng };
+                        }
+                        
+                        // Jika sinyal sudah cukup bagus sesuai level, langsung mulai
+                        if (accuracy <= lvl.maxAccuracy) {
+                            initPhase = false;
+                            gpsInitProgress.style.display = 'none';
+                            
+                            var filtered = kalmanFilter.process(lat, lng, accuracy);
+                            addTrackPoint(filtered.lat, filtered.lng);
+                            
+                            btnStartGps.innerHTML = '<i class="fa fa-circle text-danger blink"></i> Merekam...';
+                            gpsStatus.innerHTML = '<span class="text-success"><i class="fa fa-circle text-danger blink"></i> Tracking aktif! Mulai berjalan mengelilingi batas lahan.</span>';
+                            return;
+                        }
+                        
+                        // Masih dalam init phase, tampilkan status
+                        gpsStatus.innerHTML = '<span class="text-primary"><i class="fa fa-spinner fa-spin"></i> Mencari sinyal... (terbaik: ' + Math.round(bestInitAccuracy) + 'm, target: < ' + lvl.maxAccuracy + 'm)</span>';
                         return;
                     }
 
+                    // === Fase Tracking Aktif ===
+                    
+                    // Filter sinyal berdasarkan level yang dipilih
+                    if (accuracy > lvl.maxAccuracy * 2) {
+                        // Sinyal sangat buruk (2x lipat dari threshold) — skip total
+                        gpsStatus.innerHTML = '<span class="text-warning"><i class="fa fa-exclamation-triangle"></i> Sinyal terlalu lemah (' + Math.round(accuracy) + 'm). Menunggu perbaikan...</span>';
+                        gpsTips.style.display = 'block';
+                        return;
+                    }
+                    
+                    // Terapkan Kalman filter untuk smoothing
+                    var filtered = kalmanFilter.process(lat, lng, accuracy);
+                    var smoothLat = filtered.lat;
+                    var smoothLng = filtered.lng;
+
                     positionCount++;
 
+                    // Outlier detection: jika titik baru melompat terlalu jauh (> 3x akurasi)
                     if (lastGpsPoint !== null) {
-                        const dist = getDistanceFromLatLonInMeters(lastGpsPoint[0], lastGpsPoint[1], lat, lng);
+                        var dist = getDistanceFromLatLonInMeters(lastGpsPoint[0], lastGpsPoint[1], smoothLat, smoothLng);
+                        
+                        // Jarak terlalu kecil — skip (belum bergerak)
                         if (dist < 2) {
+                            return;
+                        }
+                        
+                        // Outlier: lompatan terlalu besar — gunakan Kalman saja, jangan panik
+                        if (dist > accuracy * 3 && dist > 100) {
+                            gpsStatus.innerHTML = '<span class="text-warning"><i class="fa fa-exclamation-triangle"></i> GPS loncat terdeteksi — di-filter. (Akurasi: ' + Math.round(accuracy) + 'm)</span>';
                             return;
                         }
                     }
 
-                    // Ambil titik hanya jika jarak cukup dan akurasi stabil
-                    const shouldAddPoint = lastGpsPoint === null ||
-                        getDistanceFromLatLonInMeters(lastGpsPoint[0], lastGpsPoint[1], lat, lng) >= minDistanceThreshold;
+                    // Tambah titik jika jarak cukup
+                    var shouldAddPoint = lastGpsPoint === null ||
+                        getDistanceFromLatLonInMeters(lastGpsPoint[0], lastGpsPoint[1], smoothLat, smoothLng) >= minDistanceThreshold;
 
                     if (shouldAddPoint) {
-                        const newPoint = [lat, lng];
-                        gpsTrackPoints.push(newPoint);
-                        lastGpsPoint = newPoint;
-                        lastStableGpsPoint = newPoint;
-
-                        gpsPolyline.setLatLngs(gpsTrackPoints);
-
-                        if (gpsTrackPoints.length === 1) {
-                            map.setView(newPoint, 20, { animate: true, duration: 1.2 });
-                        } else {
-                            map.panTo(newPoint, {
-                                animate: true,
-                                duration: 0.8,
-                                easeLinearity: 0.2
-                            });
-                        }
+                        addTrackPoint(smoothLat, smoothLng);
                     }
 
+                    // Status info
+                    var signalQuality = accuracy <= 20 ? 'Kuat' : (accuracy <= 50 ? 'Sedang' : 'Lemah');
                     gpsStatus.style.animation = 'none';
-                    setTimeout(() => {
-                        gpsStatus.innerHTML = `<span class="text-success"><i class="fa fa-circle text-danger blink"></i> Tracking aktif... (Akurasi: ${Math.round(accuracy)}m | rata-rata: ${Math.round(avgAccuracy)}m) | Titik: ${gpsTrackPoints.length}</span>`;
+                    setTimeout(function() {
+                        gpsStatus.innerHTML = '<span class="text-success"><i class="fa fa-circle text-danger blink"></i> Tracking aktif — Sinyal: ' + signalQuality + ' (' + Math.round(accuracy) + 'm) | Titik: ' + gpsTrackPoints.length + '</span>';
                         gpsStatus.style.animation = 'slideIn 0.2s ease';
                     }, 10);
-
-                    btnStopGps.disabled = false;
-                    btnResetGps.disabled = false;
                 },
                 function(error) {
                     console.error(error);
-                    let errorMsg = error.message;
+                    var errorMsg = error.message;
                     if (error.code === 1) errorMsg = 'Akses lokasi ditolak. Izinkan akses GPS di browser.';
-                    if (error.code === 2) errorMsg = 'Sinyal GPS tidak tersedia.';
-                    if (error.code === 3) errorMsg = 'Request timeout. Coba lagi.';
+                    if (error.code === 2) errorMsg = 'Sinyal GPS tidak tersedia. Coba gunakan "Titik Manual".';
+                    if (error.code === 3) errorMsg = 'Request timeout. Sinyal GPS sangat lemah. Coba level "Rendah" atau "Titik Manual".';
                     
-                    gpsStatus.innerHTML = '<span class="text-danger"><i class="fa fa-warning"></i> Gagal: ' + errorMsg + '</span>';
-                    isTracking = false;
-                    btnStartGps.disabled = false;
-                    btnStartGps.innerHTML = '<i class="fa fa-play"></i> Mulai Jalan';
-                    btnStopGps.disabled = true;
-                    btnResetGps.disabled = true;
+                    gpsStatus.innerHTML = '<span class="text-danger"><i class="fa fa-warning"></i> ' + errorMsg + '</span>';
+                    
+                    // Jangan langsung stop — aktifkan manual mode
+                    if (error.code === 2 || error.code === 3) {
+                        btnAddManual.disabled = false;
+                        gpsTips.style.display = 'block';
+                        gpsStatus.innerHTML += '<br><span class="text-info small"><i class="fa fa-hand-pointer-o"></i> Gunakan tombol "+ Titik Manual" untuk menandai titik di peta.</span>';
+                        // Biarkan tracking tetap aktif agar manual mode bisa dipakai
+                        btnStartGps.innerHTML = '<i class="fa fa-map-pin"></i> Mode Manual';
+                    } else {
+                        isTracking = false;
+                        btnStartGps.disabled = false;
+                        btnStartGps.innerHTML = '<i class="fa fa-play"></i> Mulai Jalan';
+                        btnStopGps.disabled = true;
+                        btnResetGps.disabled = true;
+                    }
                 },
                 {
                     enableHighAccuracy: true,
-                    maximumAge: 2000, 
-                    timeout: 10000
+                    maximumAge: 5000,    // 5 detik — data cache berguna di sinyal lemah
+                    timeout: 30000       // 30 detik — beri waktu lebih untuk mendapatkan posisi
                 }
             );
         });
 
+        // ==========================
+        // Tombol Tambah Titik Manual
+        // ==========================
+        btnAddManual.addEventListener('click', function() {
+            if (!isManualMode) {
+                // Aktifkan mode manual
+                isManualMode = true;
+                btnAddManual.classList.remove('btn-info');
+                btnAddManual.classList.add('btn-success');
+                btnAddManual.innerHTML = '<i class="fa fa-hand-pointer-o"></i> Klik di Peta...';
+                
+                gpsStatus.innerHTML = '<span class="text-info"><i class="fa fa-crosshairs"></i> Mode Manual aktif — Klik di peta untuk menambahkan titik.</span>';
+                
+                // Ubah cursor peta
+                document.getElementById('map-admin').style.cursor = 'crosshair';
+                
+                // Pastikan polyline ada
+                if (!gpsPolyline) {
+                    gpsPolyline = L.polyline(gpsTrackPoints, {
+                        color: '#667eea',
+                        weight: 4,
+                        dashArray: '5, 10',
+                        lineCap: 'round',
+                        lineJoin: 'round',
+                        opacity: 0.8,
+                        smoothFactor: 1.0
+                    }).addTo(map);
+                    isTracking = true;
+                }
+                
+                // Handler klik peta
+                manualClickHandler = function(e) {
+                    if (!isManualMode) return;
+                    
+                    var lat = e.latlng.lat;
+                    var lng = e.latlng.lng;
+                    
+                    addTrackPoint(lat, lng, false);
+                    
+                    // Marker sementara di titik yang diklik
+                    var marker = L.circleMarker([lat, lng], {
+                        radius: 6,
+                        color: '#667eea',
+                        fillColor: '#fff',
+                        fillOpacity: 1,
+                        weight: 2
+                    }).addTo(map);
+                    
+                    // Hapus marker setelah 2 detik
+                    setTimeout(function() {
+                        map.removeLayer(marker);
+                    }, 2000);
+                    
+                    gpsStatus.innerHTML = '<span class="text-success"><i class="fa fa-check"></i> Titik manual ditambahkan! Total: ' + gpsTrackPoints.length + ' titik. Klik lagi atau nonaktifkan.</span>';
+                    
+                    btnStopGps.disabled = false;
+                    btnResetGps.disabled = false;
+                };
+                
+                map.on('click', manualClickHandler);
+                
+            } else {
+                // Nonaktifkan mode manual
+                isManualMode = false;
+                btnAddManual.classList.remove('btn-success');
+                btnAddManual.classList.add('btn-info');
+                btnAddManual.innerHTML = '<i class="fa fa-map-pin"></i> + Titik Manual';
+                
+                document.getElementById('map-admin').style.cursor = '';
+                
+                if (manualClickHandler) {
+                    map.off('click', manualClickHandler);
+                    manualClickHandler = null;
+                }
+                
+                if (gpsTrackPoints.length > 0) {
+                    gpsStatus.innerHTML = '<span class="text-success"><i class="fa fa-check-circle"></i> Mode manual dinonaktifkan. Total: ' + gpsTrackPoints.length + ' titik.</span>';
+                } else {
+                    gpsStatus.innerHTML = 'Status: Mode manual dinonaktifkan.';
+                }
+            }
+        });
+
+        // ==========================
+        // Stop & Buat Area
+        // ==========================
         btnStopGps.addEventListener('click', function() {
             if(watchId) {
                 navigator.geolocation.clearWatch(watchId);
                 watchId = null;
+            }
+            
+            // Nonaktifkan mode manual
+            if (isManualMode) {
+                isManualMode = false;
+                if (manualClickHandler) {
+                    map.off('click', manualClickHandler);
+                    manualClickHandler = null;
+                }
+                document.getElementById('map-admin').style.cursor = '';
+                btnAddManual.classList.remove('btn-success');
+                btnAddManual.classList.add('btn-info');
+                btnAddManual.innerHTML = '<i class="fa fa-map-pin"></i> + Titik Manual';
             }
             
             isTracking = false;
@@ -560,18 +980,22 @@ require_once 'layout_header.php';
             btnStartGps.innerHTML = '<i class="fa fa-play"></i> Mulai Jalan';
             btnStopGps.disabled = true;
             btnResetGps.disabled = false;
+            btnAddManual.disabled = true;
+            gpsSignalBar.style.display = 'none';
+            gpsInitProgress.style.display = 'none';
             
             if(gpsTrackPoints.length < 3) {
-                gpsStatus.innerHTML = '<span class="text-warning"><i class="fa fa-info-circle"></i> Minimal 3 titik diperlukan. Terekam: ' + gpsTrackPoints.length + '</span>';
-                setTimeout(() => {
+                gpsStatus.innerHTML = '<span class="text-warning"><i class="fa fa-info-circle"></i> Minimal 3 titik diperlukan. Terekam: ' + gpsTrackPoints.length + '. Gunakan "Titik Manual" untuk menambah.</span>';
+                btnAddManual.disabled = false;
+                setTimeout(function() {
                     if(!isTracking) {
                         gpsStatus.innerHTML = 'Status: Tracking dihentikan. Tekan "Reset" untuk mulai ulang.';
                     }
-                }, 3000);
+                }, 5000);
                 return;
             }
 
-            // Hapus polyline tracking, ubah jadi polygon tertutup dengan animasi
+            // Hapus polyline tracking, ubah jadi polygon tertutup
             if (gpsPolyline) {
                 map.removeLayer(gpsPolyline);
                 gpsPolyline = null;
@@ -590,7 +1014,7 @@ require_once 'layout_header.php';
             drawnItems.addLayer(polygon);
             
             // Animasi polygon muncul
-            setTimeout(() => {
+            setTimeout(function() {
                 polygon.setStyle({
                     opacity: 0.9,
                     fillOpacity: 0.65,
@@ -609,28 +1033,59 @@ require_once 'layout_header.php';
             // Animasi warning keluar
             const warning = document.getElementById('warning-geo');
             warning.style.animation = 'slideOut 0.3s ease';
-            setTimeout(() => {
+            setTimeout(function() {
                 warning.style.display = 'none';
             }, 300);
             
-            // Status update dengan animasi
+            // Hitung luas area polygon (approximate)
+            var areaM2 = 0;
+            if (gpsTrackPoints.length >= 3) {
+                // Shoelace formula sederhana (approximate untuk area kecil)
+                for (var i = 0; i < gpsTrackPoints.length; i++) {
+                    var j = (i + 1) % gpsTrackPoints.length;
+                    var lat1r = gpsTrackPoints[i][0] * Math.PI / 180;
+                    var lat2r = gpsTrackPoints[j][0] * Math.PI / 180;
+                    var dlng = (gpsTrackPoints[j][1] - gpsTrackPoints[i][1]) * Math.PI / 180;
+                    areaM2 += dlng * (2 + Math.sin(lat1r) + Math.sin(lat2r));
+                }
+                areaM2 = Math.abs(areaM2 * 6371000 * 6371000 / 2);
+            }
+            var areaHa = (areaM2 / 10000).toFixed(2);
+            
+            // Status update
+            gpsTips.style.display = 'none';
+            gpsStats.style.display = 'none';
             gpsStatus.style.animation = 'slideIn 0.3s ease';
-            gpsStatus.innerHTML = '<span class="text-success"><i class="fa fa-check-circle"></i> Tracking dihentikan! Area lahan berhasil direkam. Siap disimpan.</span>';
+            gpsStatus.innerHTML = '<span class="text-success"><i class="fa fa-check-circle"></i> Area berhasil direkam! ' + gpsTrackPoints.length + ' titik | ~' + areaHa + ' Ha | Jarak: ' + Math.round(totalDistance) + 'm. Siap disimpan.</span>';
         });
 
+        // ==========================
+        // Reset
+        // ==========================
         btnResetGps.addEventListener('click', function() {
-            // Stop geolocation watch terlebih dahulu
             if(watchId) {
                 navigator.geolocation.clearWatch(watchId);
                 watchId = null;
             }
             
+            // Nonaktifkan mode manual
+            if (isManualMode) {
+                isManualMode = false;
+                if (manualClickHandler) {
+                    map.off('click', manualClickHandler);
+                    manualClickHandler = null;
+                }
+                document.getElementById('map-admin').style.cursor = '';
+            }
+            
             isTracking = false;
+            kalmanFilter.reset();
+            totalDistance = 0;
             
             // Animasi keluar
             if (gpsPolyline) {
                 gpsPolyline.setStyle({opacity: 0});
-                setTimeout(() => {
+                setTimeout(function() {
                     if (gpsPolyline && map.hasLayer(gpsPolyline)) {
                         map.removeLayer(gpsPolyline);
                     }
@@ -638,11 +1093,11 @@ require_once 'layout_header.php';
                 }, 300);
             }
             
-            drawnItems.eachLayer(layer => {
+            drawnItems.eachLayer(function(layer) {
                 layer.setStyle({opacity: 0});
             });
             
-            setTimeout(() => {
+            setTimeout(function() {
                 drawnItems.clearLayers();
                 gpsTrackPoints = [];
                 lastGpsPoint = null;
@@ -652,6 +1107,15 @@ require_once 'layout_header.php';
                 btnStartGps.innerHTML = '<i class="fa fa-play"></i> Mulai Jalan';
                 btnStopGps.disabled = true;
                 btnResetGps.disabled = true;
+                btnAddManual.disabled = true;
+                btnAddManual.classList.remove('btn-success');
+                btnAddManual.classList.add('btn-info');
+                btnAddManual.innerHTML = '<i class="fa fa-map-pin"></i> + Titik Manual';
+                
+                gpsSignalBar.style.display = 'none';
+                gpsStats.style.display = 'none';
+                gpsTips.style.display = 'none';
+                gpsInitProgress.style.display = 'none';
                 
                 gpsStatus.style.animation = 'slideIn 0.3s ease';
                 gpsStatus.innerHTML = '<span class="text-secondary">Status: Direset. Siap tracking baru...</span>';
