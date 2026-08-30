@@ -21,11 +21,65 @@ const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 
 hybridLayer.addTo(map);
 
-L.control.layers({
-    "Satelit (Google)": hybridLayer,
-    "Satelit (Esri)": esriLayer,
-    "Peta Standar (OSM)": osmLayer
-}, null, { collapsed: true, position: 'topright' }).addTo(map);
+const mapStage = document.querySelector('.map-stage');
+const layerMenu = document.createElement('div');
+layerMenu.className = 'custom-layer-menu';
+layerMenu.innerHTML = `
+    <button type="button" class="layer-menu-toggle" aria-label="Pilih jenis peta" title="Pilih jenis peta">
+        <i class="fa fa-map" aria-hidden="true"></i>
+    </button>
+    <div class="layer-menu-panel" role="menu" aria-label="Pilihan jenis peta">
+        <button type="button" class="layer-option active" data-layer="google" aria-pressed="true">
+            <span class="dot dot-google"></span> Satelit (Google)
+        </button>
+        <button type="button" class="layer-option" data-layer="esri" aria-pressed="false">
+            <span class="dot dot-esri"></span> Satelit (Esri)
+        </button>
+        <button type="button" class="layer-option" data-layer="osm" aria-pressed="false">
+            <span class="dot dot-osm"></span> Peta Standar (OSM)
+        </button>
+    </div>
+`;
+mapStage.appendChild(layerMenu);
+
+const layerToggleBtn = layerMenu.querySelector('.layer-menu-toggle');
+const layerOptions = layerMenu.querySelectorAll('.layer-option');
+
+function setMapLayer(type) {
+    const layerMap = {
+        google: hybridLayer,
+        esri: esriLayer,
+        osm: osmLayer
+    };
+
+    Object.values(layerMap).forEach(layer => {
+        if (map.hasLayer(layer)) map.removeLayer(layer);
+    });
+
+    if (layerMap[type]) {
+        layerMap[type].addTo(map);
+    }
+
+    layerOptions.forEach(option => {
+        const active = option.dataset.layer === type;
+        option.classList.toggle('active', active);
+        option.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+}
+
+layerToggleBtn.addEventListener('click', () => {
+    layerMenu.classList.toggle('open');
+});
+
+layerOptions.forEach(option => {
+    option.addEventListener('click', () => {
+        const type = option.dataset.layer;
+        setMapLayer(type);
+        layerMenu.classList.remove('open');
+    });
+});
+
+setMapLayer('google');
 
 // ============================================================
 // VARIABEL GLOBAL
@@ -295,10 +349,14 @@ fetch('get_lahan.php')
         }
 
         // Layer control
-        L.control.layers(null, {
+        const overlayControl = L.control.layers(null, {
             'Batas Lahan': polygonGroup,
             'Titik Lokasi': markerGroup
-        }, { collapsed: true }).addTo(map);
+        }, {
+            collapsed: true,
+            position: 'bottomleft'
+        });
+overlayControl.addTo(map);
 
         // ── Pencarian ──
         const searchBtn = document.getElementById('btn-cari-lahan');

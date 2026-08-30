@@ -14,40 +14,47 @@ require_once 'koneksi.php';
     <link rel ="stylesheet" href="assets/css/map.css">
 </head>
 <body>
+    <div class="app-shell">
+        <header class="header-green" role="banner">
+            <div class="header-spacer" aria-hidden="true"></div>
+            <h1 class="header-title">🌾 PETA LAHAN PERTANIAN</h1>
+            <a href="<?= base_url('admin/login.php') ?>" class="btn-login" aria-label="Login Admin" title="Login Admin">
+                <i class="fa fa-lock" aria-hidden="true"></i>
+                <span class="login-label">Login Admin</span>
+            </a>
+        </header>
 
-    <!-- Header -->
-    <header class="header-green">
-        <div></div>
-        <h1 class="header-title">🌾 PETA LAHAN PERTANIAN</h1>
-        <a href="<?= base_url('admin/login.php') ?>" class="btn-login" aria-label="Login Admin"><i class="fa fa-lock"></i><span class="login-label"> Login Admin</span></a>
-    </header>
+        <main class="map-stage" aria-label="Peta lahan pertanian">
+            <div id="map" aria-label="Peta lahan"></div>
 
-    <!-- Peta -->
-    <div id="map"></div>
+            <div class="search-overlay" role="search">
+                <label class="sr-only" for="input-kode-lahan">Cari data lahan</label>
+                <i class="fa fa-search" aria-hidden="true"></i>
+                <input type="text" id="input-kode-lahan" class="search-input" placeholder="Cari kode lahan, pemilik, atau kecamatan..." autocomplete="off">
+                <button type="button" id="btn-cari-lahan" class="search-btn" title="Cari lahan" aria-label="Cari lahan">
+                    <i class="fa fa-arrow-right" aria-hidden="true"></i>
+                </button>
+            </div>
 
-    <!-- Search -->
-    <div class="search-overlay">
-        <i class="fa fa-search" style="color:#aaa;margin-right:8px;"></i>
-        <input type="text" id="input-kode-lahan" class="search-input" placeholder="Cari kode lahan, pemilik, atau kecamatan...">
-        <button id="btn-cari-lahan" class="search-btn" title="Cari"><i class="fa fa-arrow-right"></i></button>
+            <div id="pesan-error-cari" role="alert" aria-live="assertive">Lahan tidak ditemukan!</div>
+
+            <aside class="legend-overlay" aria-label="Legenda komoditas">
+                <div class="legend-title"><i class="fa fa-map-marker" aria-hidden="true"></i>Legenda Komoditas</div>
+                <?php
+                $query = mysqli_query($koneksi, "SELECT * FROM komoditas ORDER BY nama_komoditas ASC");
+                while ($row = mysqli_fetch_assoc($query)) {
+                    $namaKomoditas = htmlspecialchars($row['nama_komoditas'], ENT_QUOTES, 'UTF-8');
+                    $warna = htmlspecialchars($row['warna_polygon'], ENT_QUOTES, 'UTF-8');
+                    echo "<div class='legend-item'>
+                            <span class='legend-color' style='background-color:{$warna};'></span>
+                            {$namaKomoditas}
+                          </div>";
+                }
+                ?>
+            </aside>
+        </main>
     </div>
-    <div id="pesan-error-cari">Lahan tidak ditemukan!</div>
 
-    <!-- Legenda -->
-    <div class="legend-overlay">
-        <div class="legend-title"><i class="fa fa-map-marker" style="color:#2e7d32;margin-right:6px;"></i>Legenda Komoditas</div>
-        <?php
-        $query = mysqli_query($koneksi, "SELECT * FROM komoditas ORDER BY nama_komoditas ASC");
-        while($row = mysqli_fetch_assoc($query)) {
-            echo "<div class='legend-item'>
-                    <span class='legend-color' style='background-color:{$row['warna_polygon']};'></span>
-                    {$row['nama_komoditas']}
-                  </div>";
-        }
-        ?>
-    </div>
-
-    <!-- Scripts -->
     <script src="assets/template/assets/js/jquery-3.3.1.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="assets/js/map.js"></script>
