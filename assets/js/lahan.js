@@ -607,14 +607,36 @@
 
                     if (shouldAddPoint) {
                         addTrackPoint(smoothLat, smoothLng);
+                        
+                        // Deteksi otomatis kembali ke titik awal (Auto-Close Polygon)
+                        if (gpsTrackPoints.length >= 5 && totalDistance > 20) {
+                            var firstPoint = gpsTrackPoints[0];
+                            var distToStart = getDistanceFromLatLonInMeters(firstPoint[0], firstPoint[1], smoothLat, smoothLng);
+                            
+                            // Toleransi jarak penutupan berdasarkan akurasi sinyal (minimal 8 meter)
+                            var closeThreshold = Math.max(8, accuracy * 0.2); 
+                            
+                            if (distToStart <= closeThreshold) {
+                                // Memicu tombol berhenti secara otomatis
+                                btnStopGps.click(); 
+                                
+                                // Ganti status dengan pesan sukses
+                                setTimeout(function() {
+                                    gpsStatus.innerHTML = '<span class="text-success font-weight-bold"><i class="fa fa-flag-checkered"></i> Titik awal tercapai! Pemetaan otomatis selesai.</span>';
+                                }, 100);
+                                return;
+                            }
+                        }
                     }
 
                     // Status info
                     var signalQuality = accuracy <= 20 ? 'Kuat' : (accuracy <= 50 ? 'Sedang' : 'Lemah');
                     gpsStatus.style.animation = 'none';
                     setTimeout(function() {
-                        gpsStatus.innerHTML = '<span class="text-success"><i class="fa fa-circle text-danger blink"></i> Tracking aktif — Sinyal: ' + signalQuality + ' (' + Math.round(accuracy) + 'm) | Titik: ' + gpsTrackPoints.length + '</span>';
-                        gpsStatus.style.animation = 'slideIn 0.2s ease';
+                        if (isTracking) { // Hanya update jika belum auto-close
+                            gpsStatus.innerHTML = '<span class="text-success"><i class="fa fa-circle text-danger blink"></i> Tracking aktif — Sinyal: ' + signalQuality + ' (' + Math.round(accuracy) + 'm) | Titik: ' + gpsTrackPoints.length + '</span>';
+                            gpsStatus.style.animation = 'slideIn 0.2s ease';
+                        }
                     }, 10);
                 },
                 function(error) {
