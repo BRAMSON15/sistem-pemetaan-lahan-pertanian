@@ -513,8 +513,9 @@ require_once 'layout_header.php';
                     this.lng = lng;
                     this.variance = measurement_variance;
                 } else {
-                    // Prediksi: tambahkan sedikit process noise (untuk pergerakan berjalan)
-                    var processNoise = 0.000001; // ~0.11m proses noise
+                    // Prediksi: tambahkan process noise (pergerakan pejalan kaki ~1-2m per update)
+                    var walkSpeedDeg = 2.0 / 111320; // 2 meter dalam derajat
+                    var processNoise = walkSpeedDeg * walkSpeedDeg;
                     this.variance += processNoise;
                     
                     // Update (Kalman gain)
@@ -805,25 +806,30 @@ require_once 'layout_header.php';
 
                     positionCount++;
 
-                    // Outlier detection: jika titik baru melompat terlalu jauh (> 3x akurasi)
+                    var shouldAddPoint = false;
+
                     if (lastGpsPoint !== null) {
                         var dist = getDistanceFromLatLonInMeters(lastGpsPoint[0], lastGpsPoint[1], smoothLat, smoothLng);
                         
-                        // Jarak terlalu kecil — skip (belum bergerak)
-                        if (dist < 2) {
+                        // Dynamic threshold: semakin buruk akurasi, semakin jauh user harus bergerak agar titik dicatat
+                        // Ini mencegah GPS drift (titik bergerak sendiri saat user diam) di kondisi sinyal buruk.
+                        var dynamicThreshold = Math.max(minDistanceThreshold, accuracy * 0.15); 
+                        
+                        if (dist < dynamicThreshold) {
+                            // Anggap user masih diam (hanya noise GPS)
                             return;
                         }
                         
-                        // Outlier: lompatan terlalu besar — gunakan Kalman saja, jangan panik
-                        if (dist > accuracy * 3 && dist > 100) {
+                        // Outlier: lompatan terlalu besar dalam waktu singkat (noise ekstrem)
+                        if (dist > accuracy * 2 && dist > 50) {
                             gpsStatus.innerHTML = '<span class="text-warning"><i class="fa fa-exclamation-triangle"></i> GPS loncat terdeteksi — di-filter. (Akurasi: ' + Math.round(accuracy) + 'm)</span>';
                             return;
                         }
-                    }
 
-                    // Tambah titik jika jarak cukup
-                    var shouldAddPoint = lastGpsPoint === null ||
-                        getDistanceFromLatLonInMeters(lastGpsPoint[0], lastGpsPoint[1], smoothLat, smoothLng) >= minDistanceThreshold;
+                        shouldAddPoint = true;
+                    } else {
+                        shouldAddPoint = true;
+                    }
 
                     if (shouldAddPoint) {
                         addTrackPoint(smoothLat, smoothLng);
