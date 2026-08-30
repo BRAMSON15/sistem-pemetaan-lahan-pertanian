@@ -1,0 +1,90 @@
+ 
+        body {
+            font-family: 'Inter', sans-serif;
+            background-image: url('../assets/img/daun.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+        }
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+        }
+        .login-logo {
+            color: #2e7d32; /* Green */
+            font-size: 40px;
+            margin-bottom: 15px;
+        }
+        .login-title {
+            color: #2e7d32;
+            font-weight: 700;
+            font-size: 20px;
+            margin-bottom: 30px;
+            line-height: 1.4;
+        }
+        .input-group-text {
+            background-color: transparent;
+            border-right: none;
+            color: #666;
+        }
+        .form-control {
+            border-left: none;
+        }
+        .form-control:focus {
+            box-shadow: none;
+            border-color: #ced4da;
+        }
+        .input-group {
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .btn-login {
+            background-color: #2e7d32;
+            color: white;
+            font-weight: 600;
+            padding: 12px;
+            border-radius: 5px;
+            width: 100%;
+            border: none;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+        .btn-login:hover {
+            background-color: #1b5e20;
+            color: white;
+        }
+        .btn-home {
+            display: block;
+            margin-top: 12px;
+            color: #2e7d32;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .btn-home:hover {
+            color: #1b5e20;
+            text-decoration: underline;
+        }
+        .input-group-append .btn {
+            border-left: none;
+            border-color: #ced4da;
+            color: #666;
+            cursor: pointer;
+        }
+        .input-group-append .btn:hover {
+            background-color: #f8f9fa;
+        }
+        .input-group-append .btn:focus {
+            box-shadow: none;
+        }

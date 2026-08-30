@@ -105,42 +105,14 @@ if(empty($labels_bar)) {
 ob_start(); 
 ?>
 <script>
-    // Bar Chart
-    const ctxBar = document.getElementById('barChart').getContext('2d');
-    new Chart(ctxBar, {
-        type: 'bar',
-        data: {
-            labels: <?= json_encode($labels_bar) ?>,
-            datasets: [{
-                label: 'Jumlah Lahan',
-                data: <?= json_encode($data_bar) ?>,
-                backgroundColor: '#4caf50'
-            }]
-        },
-        options: {
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true } }
-        }
-    });
-
-    // Pie Chart
-    const ctxPie = document.getElementById('pieChart').getContext('2d');
-    new Chart(ctxPie, {
-        type: 'pie',
-        data: {
-            labels: <?= json_encode($labels_pie) ?>,
-            datasets: [{
-                data: <?= json_encode($data_pie) ?>,
-                backgroundColor: <?= json_encode($colors_pie) ?>
-            }]
-        },
-        options: {
-            plugins: {
-                legend: { position: 'bottom' }
-            }
-        }
-    });
+    window.dashboardBarLabels = <?= json_encode($labels_bar) ?>;
+    window.dashboardBarData = <?= json_encode($data_bar) ?>;
+    window.dashboardPieLabels = <?= json_encode($labels_pie) ?>;
+    window.dashboardPieData = <?= json_encode($data_pie) ?>;
+    window.dashboardPieColors = <?= json_encode($colors_pie) ?>;
 </script>
+<script src="../assets/js/chart.js"></script>
+
 <?php 
 $extra_scripts = ob_get_clean();
 require_once 'layout_footer.php'; 
