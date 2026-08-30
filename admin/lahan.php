@@ -621,12 +621,12 @@ require_once 'layout_header.php';
             
             if (panMap !== false) {
                 if (gpsTrackPoints.length === 1) {
-                    map.setView(newPoint, 19, { animate: true, duration: 1.2 });
+                    map.setView(newPoint, 19, { animate: true, duration: 1.0 });
                 } else {
                     map.panTo(newPoint, {
                         animate: true,
-                        duration: 0.8,
-                        easeLinearity: 0.2
+                        duration: 0.5,
+                        easeLinearity: 0.5
                     });
                 }
             }
@@ -680,7 +680,6 @@ require_once 'layout_header.php';
             gpsPolyline = L.polyline(gpsTrackPoints, {
                 color: '#667eea',
                 weight: 4,
-                dashArray: '5, 10',
                 lineCap: 'round',
                 lineJoin: 'round',
                 opacity: 0.8,
@@ -891,7 +890,6 @@ require_once 'layout_header.php';
                     gpsPolyline = L.polyline(gpsTrackPoints, {
                         color: '#667eea',
                         weight: 4,
-                        dashArray: '5, 10',
                         lineCap: 'round',
                         lineJoin: 'round',
                         opacity: 0.8,
