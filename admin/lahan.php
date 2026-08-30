@@ -392,6 +392,21 @@ require_once 'layout_header.php';
         // Variabel untuk tracking
         var lastGpsPoint = null;
         var minDistanceThreshold = 5; // Minimum 5 meter sebelum menambah titik baru
+        var gpsSignalSamples = [];
+        var lastStableGpsPoint = null;
+
+        function getAverageAccuracy() {
+            if (gpsSignalSamples.length === 0) return null;
+            const total = gpsSignalSamples.reduce((sum, value) => sum + value, 0);
+            return total / gpsSignalSamples.length;
+        }
+
+        function pushSignalSample(accuracy) {
+            gpsSignalSamples.push(accuracy);
+            if (gpsSignalSamples.length > 6) {
+                gpsSignalSamples.shift();
+            }
+        }
 
         // Fungsi hitung jarak antara dua koordinat (Haversine formula)
         function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
@@ -433,7 +448,9 @@ require_once 'layout_header.php';
             }
             gpsTrackPoints = [];
             lastGpsPoint = null;
-            
+            lastStableGpsPoint = null;
+            gpsSignalSamples = [];
+
             // Inisialisasi Polyline untuk tracking jalan dengan style halus
             gpsPolyline = L.polyline(gpsTrackPoints, {
                 color: '#667eea',
@@ -456,12 +473,14 @@ require_once 'layout_header.php';
                     const lng = position.coords.longitude;
                     const accuracy = position.coords.accuracy;
 
-                    // Abaikan sinyal GPS yang sangat tidak akurat (di atas 20 meter)
-                    // untuk mencegah titik awal loncat-loncat saat user masih diam
-                    if (accuracy > 20) {
+                    pushSignalSample(accuracy);
+                    const avgAccuracy = getAverageAccuracy();
+
+                    // Abaikan sinyal GPS yang sangat tidak akurat agar tidak "loncat-loncat"
+                    if (accuracy > 25 || (avgAccuracy !== null && avgAccuracy > 18)) {
                         gpsStatus.style.animation = 'none';
                         setTimeout(() => {
-                            gpsStatus.innerHTML = `<span class="text-warning"><i class="fa fa-spinner fa-spin"></i> Menunggu sinyal GPS stabil... (Akurasi: ${Math.round(accuracy)}m)</span>`;
+                            gpsStatus.innerHTML = `<span class="text-warning"><i class="fa fa-spinner fa-spin"></i> Menunggu sinyal GPS stabil... (Akurasi: ${Math.round(accuracy)}m / rata-rata: ${avgAccuracy !== null ? Math.round(avgAccuracy) : '-'}m)</span>`;
                             gpsStatus.style.animation = 'slideIn 0.2s ease';
                         }, 10);
                         return;
@@ -469,37 +488,42 @@ require_once 'layout_header.php';
 
                     positionCount++;
 
-                    // HANYA tambah titik jika jarak dari titik terakhir >= minDistanceThreshold
-                    if (lastGpsPoint === null || 
-                        getDistanceFromLatLonInMeters(lastGpsPoint[0], lastGpsPoint[1], lat, lng) >= minDistanceThreshold) {
-                        
+                    if (lastGpsPoint !== null) {
+                        const dist = getDistanceFromLatLonInMeters(lastGpsPoint[0], lastGpsPoint[1], lat, lng);
+                        if (dist < 2) {
+                            return;
+                        }
+                    }
+
+                    // Ambil titik hanya jika jarak cukup dan akurasi stabil
+                    const shouldAddPoint = lastGpsPoint === null ||
+                        getDistanceFromLatLonInMeters(lastGpsPoint[0], lastGpsPoint[1], lat, lng) >= minDistanceThreshold;
+
+                    if (shouldAddPoint) {
                         const newPoint = [lat, lng];
                         gpsTrackPoints.push(newPoint);
                         lastGpsPoint = newPoint;
-                        
-                        // Perbarui polyline secara dinamis
+                        lastStableGpsPoint = newPoint;
+
                         gpsPolyline.setLatLngs(gpsTrackPoints);
-                        
-                        // Gunakan panTo dan setZoom alih-alih flyTo agar transisi pergerakan
-                        // menjadi sangat halus dan tidak kaku/melompat saat user berjalan
-                        if (lastGpsPoint === null || gpsTrackPoints.length === 1) {
-                            map.setView(newPoint, 20, { animate: true, duration: 1.5 });
+
+                        if (gpsTrackPoints.length === 1) {
+                            map.setView(newPoint, 20, { animate: true, duration: 1.2 });
                         } else {
                             map.panTo(newPoint, {
                                 animate: true,
-                                duration: 1.0,
-                                easeLinearity: 0.1
+                                duration: 0.8,
+                                easeLinearity: 0.2
                             });
                         }
                     }
 
-                    // Update status dengan animasi
                     gpsStatus.style.animation = 'none';
                     setTimeout(() => {
-                        gpsStatus.innerHTML = `<span class="text-success"><i class="fa fa-circle text-danger blink"></i> Tracking aktif... (${Math.round(accuracy)}m) | Titik tercatat: ${gpsTrackPoints.length}</span>`;
+                        gpsStatus.innerHTML = `<span class="text-success"><i class="fa fa-circle text-danger blink"></i> Tracking aktif... (Akurasi: ${Math.round(accuracy)}m | rata-rata: ${Math.round(avgAccuracy)}m) | Titik: ${gpsTrackPoints.length}</span>`;
                         gpsStatus.style.animation = 'slideIn 0.2s ease';
                     }, 10);
-                    
+
                     btnStopGps.disabled = false;
                     btnResetGps.disabled = false;
                 },
